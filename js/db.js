@@ -1,4 +1,5 @@
 const DB_KEY = 'fridge_inventory_v1';
+const DB_CATS_KEY = 'fridge_categories_v1';
 
 const db = {
   getAll: () => {
@@ -6,7 +7,23 @@ const db = {
     return data ? JSON.parse(data) : [];
   },
   saveAll: (products) => {
-    localStorage.setItem(DB_KEY, JSON.stringify(products));
+    try {
+        localStorage.setItem(DB_KEY, JSON.stringify(products));
+    } catch (e) {
+        alert('Stocarea este plina! Sterge produse cu poze mari.');
+        console.error(e);
+    }
+  },
+  getCategories: () => {
+    const data = localStorage.getItem(DB_CATS_KEY);
+    return data ? JSON.parse(data) : ['General', 'Dairy', 'Vegetables', 'Meat', 'Drinks'];
+  },
+  addCategory: (cat) => {
+    const cats = db.getCategories();
+    if (!cats.includes(cat)) {
+        cats.push(cat);
+        localStorage.setItem(DB_CATS_KEY, JSON.stringify(cats));
+    }
   },
   add: (product) => {
     const products = db.getAll();
@@ -22,10 +39,6 @@ const db = {
     const product = products.find(p => p.id === id);
     if (product) {
       product.qty = Math.max(0, parseInt(product.qty || 0) + delta);
-      if (product.qty === 0) {
-        // Option: auto-remove or keep with 0? Let's keep with 0.
-        // Actually user might want to remove. Let's keep 0 for now so they can restock.
-      }
       db.saveAll(products);
     }
   },
