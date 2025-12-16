@@ -1,50 +1,103 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Elements ---
     const els = {
-        main: document.getElementById('main-content'),
-        addBtn: document.getElementById('add-btn'),
-        modal: document.getElementById('add-modal'),
+        home: document.getElementById('home-view'),
+        list: document.getElementById('list-view'),
+        listContainer: document.getElementById('product-list-container'),
+        
+        // Buttons
+        homeAdd: document.getElementById('home-add-btn'),
+        homeConsume: document.getElementById('home-consume-btn'),
+        homeList: document.getElementById('home-list-btn'),
+        backToHome: document.getElementById('back-to-home'),
+        fabAdd: document.getElementById('fab-add-btn'),
+
+        // Modals
+        addModal: document.getElementById('add-modal'),
         closeModal: document.getElementById('close-modal'),
+        catModal: document.getElementById('cat-modal'),
+        
+        // Form
         form: document.getElementById('product-form'),
         catSelect: document.getElementById('category-input'),
         barcodeInput: document.getElementById('barcode-input'),
+        nameInput: document.getElementById('name-input'),
+        qtyInput: document.getElementById('qty-input'),
         
-        // Scanner
-        scanTrigger: document.getElementById('scan-trigger'),
+        // Cameras
         scannerOverlay: document.getElementById('scanner-overlay'),
+        scanTrigger: document.getElementById('scan-trigger'),
         closeScanner: document.getElementById('close-scanner'),
         
-        // Camera
-        takePhotoBtn: document.getElementById('take-photo-btn'),
         cameraOverlay: document.getElementById('camera-overlay'),
-        video: document.getElementById('camera-feed'),
-        captureBtn: document.getElementById('capture-btn'),
+        takePhoto: document.getElementById('take-photo-btn'),
         closeCamera: document.getElementById('close-camera'),
+        captureBtn: document.getElementById('capture-btn'),
+        video: document.getElementById('camera-feed'),
         canvas: document.getElementById('camera-canvas'),
+        
+        // Photo preview
         photoPreview: document.getElementById('photo-preview'),
         photoImg: document.getElementById('photo-img'),
         photoBase64: document.getElementById('photo-base64'),
         
-        // Category
-        newCatBtn: document.getElementById('new-cat-btn'),
-        catModal: document.getElementById('cat-modal'),
-        newCatInput: document.getElementById('new-cat-input'),
-        saveCatBtn: document.getElementById('save-cat-btn'),
-
         // Lightbox
         lightbox: document.getElementById('lightbox'),
-        lightboxImg: document.getElementById('lightbox-img')
+        lightboxImg: document.getElementById('lightbox-img'),
+
+        // Cat
+        newCatBtn: document.getElementById('new-cat-btn'),
+        saveCatBtn: document.getElementById('save-cat-btn'),
+        newCatInput: document.getElementById('new-cat-input')
     };
 
     let scanner = null;
     let cameraStream = null;
+    let scanMode = 'add'; // 'add' or 'consume'
+
+    // --- NAVIGATION ---
+    function showHome() {
+        els.home.classList.add('active');
+        els.list.classList.remove('active');
+    }
+    function showList() {
+        renderList();
+        els.home.classList.remove('active');
+        els.list.classList.add('active');
+    }
+
+    els.homeList.addEventListener('click', showList);
+    els.backToHome.addEventListener('click', showHome);
+    
+    // "Add" Flow
+    function openAddModal() {
+        els.addModal.classList.add('active');
+        els.form.reset();
+        els.photoPreview.style.display = 'none';
+        els.photoBase64.value = '';
+        renderCats();
+    }
+    
+    els.homeAdd.addEventListener('click', openAddModal);
+    els.fabAdd.addEventListener('click', openAddModal);
+    els.closeModal.addEventListener('click', () => els.addModal.classList.remove('active'));
+
+    // "Consume" Flow
+    els.homeConsume.addEventListener('click', () => {
+        scanMode = 'consume';
+        startScanner();
+    });
 
     // --- RENDER ---
-    function render() {
+    function renderCats() {
+        const cats = db.getCategories();
+        els.catSelect.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function renderList() {
         const products = db.getAll();
         const categories = db.getCategories();
         
-        // Sort products by category
         const grouped = {};
         categories.forEach(c => grouped[c] = []);
         products.forEach(p => {
@@ -53,9 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
             grouped[c].push(p);
         });
 
-        els.main.innerHTML = '';
+        els.listContainer.innerHTML = '';
         
-        // Build list
         let hasItems = false;
         categories.forEach(cat => {
             const items = grouped[cat];
@@ -63,162 +115,156 @@ document.addEventListener('DOMContentLoaded', () => {
                 hasItems = true;
                 const section = document.createElement('div');
                 section.className = 'category-section';
+                section.innerHTML = `<div class="category-title">${cat}</div>`;
                 
-                const title = document.createElement('div');
-                title.className = 'category-title';
-                title.textContent = cat;
-                section.appendChild(title);
-
-                const listContainer = document.createElement('div');
-                listContainer.className = 'product-list-container';
-
                 items.forEach(p => {
                     const el = document.createElement('div');
                     el.className = 'product-item';
-                    const img = p.photo || 'icon.svg'; // Fallback
+                    const img = p.photo || 'icon.svg';
                     el.innerHTML = `
                         <img src="${img}" class="product-thumb" onclick="openLightbox('${img}')">
                         <div class="product-info">
                             <div class="product-title">${p.name}</div>
-                            <small style="color:var(--text-muted)">${p.barcode || 'No Code'}</small>
+                            <div class="product-meta">${p.barcode || ''}</div>
                         </div>
-                        <div class="product-qty-ctrl">
-                            <button class="btn-qty" onclick="window.updateStock('${p.id}', -1)">-</button>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button class="btn-qty" onclick="updateStock('${p.id}', -1)">-</button>
                             <span class="qty-val">${p.qty}</span>
-                            <button class="btn-qty" onclick="window.updateStock('${p.id}', 1)">+</button>
+                            <button class="btn-qty" onclick="updateStock('${p.id}', 1)">+</button>
                         </div>
                     `;
-                    listContainer.appendChild(el);
+                    section.appendChild(el);
                 });
-                section.appendChild(listContainer);
-                els.main.appendChild(section);
+                els.listContainer.appendChild(section);
             }
         });
 
         if (!hasItems) {
-            els.main.innerHTML = `<div style="text-align:center; padding:4rem; color: #64748b;">
-                <h3>Empty Fridge</h3><p>Tap + to start</p>
+            els.listContainer.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-muted);">
+                <h3>Fridge Empty</h3>
             </div>`;
         }
-
-        // Update Category Select
-        els.catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
     // --- LOGIC ---
     window.updateStock = (id, d) => {
         db.updateQty(id, d);
-        render();
+        renderList();
     };
-
+    
     window.openLightbox = (src) => {
-        if (!src || src.includes('icon.svg')) return;
+        if(!src || src.includes('icon.svg')) return;
         els.lightboxImg.src = src;
         els.lightbox.classList.add('active');
     };
 
-    // --- MODALS ---
-    els.addBtn.addEventListener('click', () => {
-        els.modal.classList.add('active');
-        els.form.reset();
-        els.photoPreview.style.display = 'none';
-        els.photoBase64.value = '';
-        render(); // Refresh select
-    });
-    els.closeModal.addEventListener('click', () => els.modal.classList.remove('active'));
-
-    // --- CATEGORY ---
     els.newCatBtn.addEventListener('click', () => els.catModal.classList.add('active'));
     els.saveCatBtn.addEventListener('click', () => {
-        const name = els.newCatInput.value.trim();
-        if (name) {
-            db.addCategory(name);
-            els.catModal.classList.remove('active');
-            render();
-        }
+        const val = els.newCatInput.value.trim();
+        if(val) db.addCategory(val);
+        els.catModal.classList.remove('active');
+        if(els.list.classList.contains('active')) renderList(); 
+        else renderCats();
     });
 
-    // --- SCANNER ---
-    els.scanTrigger.addEventListener('click', () => {
-        els.scannerOverlay.classList.remove('hidden');
-        if (!scanner) {
-            scanner = new Html5Qrcode("reader");
-        }
-        const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-        scanner.start({ facingMode: "environment" }, config, (decoded) => {
-            els.barcodeInput.value = decoded;
-            stopScanner();
-            // Try to find if exists
-            const existing = db.findByBarcode(decoded);
-            if(existing) {
-                alert(`Found: ${existing.name}. Increasing Stock.`);
-                window.updateStock(existing.id, 1);
-                stopScanner();
-                els.modal.classList.remove('active');
-            }
-        }).catch(err => console.error(err));
-    });
-
-    els.closeScanner.addEventListener('click', stopScanner);
-    function stopScanner() {
-        if(scanner) scanner.stop().then(() => els.scannerOverlay.classList.add('hidden')).catch(console.error);
-        else els.scannerOverlay.classList.add('hidden');
-    }
-
-    // --- CAMERA PHOTO ---
-    els.takePhotoBtn.addEventListener('click', async () => {
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            els.video.srcObject = cameraStream;
-            els.cameraOverlay.classList.remove('hidden');
-        } catch (e) {
-            alert('Camera access denied or error: ' + e);
-        }
-    });
-
-    els.closeCamera.addEventListener('click', stopCamera);
-    function stopCamera() {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(t => t.stop());
-            cameraStream = null;
-        }
-        els.cameraOverlay.classList.add('hidden');
-    }
-
-    els.captureBtn.addEventListener('click', () => {
-        const v = els.video;
-        const w = v.videoWidth;
-        const h = v.videoHeight;
-        // Set canvas size (downscale for storage efficiency)
-        const maxDim = 800;
-        const scale = Math.min(maxDim/w, maxDim/h, 1);
-        els.canvas.width = w * scale;
-        els.canvas.height = h * scale;
-        
-        const ctx = els.canvas.getContext('2d');
-        ctx.drawImage(v, 0, 0, els.canvas.width, els.canvas.height);
-        
-        const dataUrl = els.canvas.toDataURL('image/jpeg', 0.7); // 70% quality
-        els.photoBase64.value = dataUrl;
-        els.photoImg.src = dataUrl;
-        els.photoPreview.style.display = 'block';
-        stopCamera();
-    });
-
-    // --- FORM SUBMIT ---
     els.form.addEventListener('submit', (e) => {
         e.preventDefault();
         const data = {
             barcode: els.barcodeInput.value,
-            name: document.getElementById('name-input').value,
+            name: els.nameInput.value,
             category: els.catSelect.value,
-            qty: parseInt(document.getElementById('qty-input').value),
+            qty: parseInt(els.qtyInput.value),
             photo: els.photoBase64.value
         };
         db.add(data);
-        els.modal.classList.remove('active');
-        render();
+        els.addModal.classList.remove('active');
+        if(els.list.classList.contains('active')) renderList();
+        else alert('Product Saved!');
     });
 
-    render();
+    // --- SCANNERS ---
+    els.scanTrigger.addEventListener('click', () => {
+        scanMode = 'add';
+        startScanner();
+    });
+    
+    els.closeScanner.addEventListener('click', stopScanner);
+
+    function startScanner() {
+        els.scannerOverlay.classList.remove('hidden');
+        if (!scanner) scanner = new Html5Qrcode("reader");
+        
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decoded) => {
+            if (scanMode === 'add') {
+                els.barcodeInput.value = decoded;
+                stopScanner();
+                // Check exist
+                const exist = db.findByBarcode(decoded);
+                if(exist) {
+                   if(confirm(`"${exist.name}" already exists. Add +1?`)) {
+                       db.updateQty(exist.id, 1);
+                       els.addModal.classList.remove('active');
+                   }
+                }
+            } else if (scanMode === 'consume') {
+                const exist = db.findByBarcode(decoded);
+                if (exist) {
+                    db.updateQty(exist.id, -1);
+                    alert(`Consumed 1 ${exist.name}. Remaining: ${exist.qty - 1}`);
+                    stopScanner(); // or keep open for multiple? Let's stop to be safe.
+                } else {
+                    alert('Product not found in fridge!');
+                    stopScanner();
+                }
+            }
+        }).catch(console.error);
+    }
+    
+    function stopScanner() {
+        if(scanner && scanner.isScanning) scanner.stop().then(() => els.scannerOverlay.classList.add('hidden'));
+        else els.scannerOverlay.classList.add('hidden');
+    }
+
+    // --- CAMERA ZOOM ---
+    els.takePhoto.addEventListener('click', async () => {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment', width: {ideal: 1920}, height: {ideal: 1080} } 
+            });
+            els.video.srcObject = cameraStream;
+            els.cameraOverlay.classList.remove('hidden');
+        } catch(e) { alert('Cam Error: '+e); }
+    });
+
+    els.closeCamera.addEventListener('click', () => {
+        if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+        els.cameraOverlay.classList.add('hidden');
+    });
+
+    els.captureBtn.addEventListener('click', () => {
+        const vid = els.video;
+        const w = vid.videoWidth;
+        const h = vid.videoHeight;
+        
+        // Simulated Zoom: Crop center 50%
+        const cropFactor = 0.6; // Use 60% of image (zoom in)
+        const cropW = w * cropFactor;
+        const cropH = h * cropFactor;
+        const startX = (w - cropW) / 2;
+        const startY = (h - cropH) / 2;
+
+        els.canvas.width = 600; // Output size
+        els.canvas.height = 600;
+        
+        const ctx = els.canvas.getContext('2d');
+        // Draw cropped region to canvas
+        ctx.drawImage(vid, startX, startY, cropW, cropH, 0, 0, els.canvas.width, els.canvas.height);
+        
+        const data = els.canvas.toDataURL('image/jpeg', 0.8);
+        els.photoBase64.value = data;
+        els.photoImg.src = data;
+        els.photoPreview.style.display = 'block';
+        
+        els.closeCamera.click();
+    });
 });

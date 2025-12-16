@@ -3,97 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fridge Inventory V2</title>
+  <title>MyFridge Spring</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#fdfbf9">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
-  <header>
-    <div class="logo">MyFridge</div>
-    <!-- Add Category Btn -->
-    <button id="new-cat-btn" style="background:none; border:none; color:var(--primary); font-weight:600;">+ Cat</button>
-  </header>
+  
+  <!-- HOME VIEW -->
+  <section id="home-view" class="view-section active">
+    <header style="background: transparent; box-shadow: none; padding: 0; margin-bottom: 2rem;">
+        <div class="logo">MyFridge ??</div>
+    </header>
 
-  <main id="main-content">
-    <!-- List injected here -->
-  </main>
+    <div class="menu-card card-add" id="home-add-btn">
+        <div class="menu-icon"><span class="material-symbols-rounded">add_circle</span></div>
+        <div class="menu-text">
+            <h3>Add Product</h3>
+            <p>Scan & stock up</p>
+        </div>
+    </div>
 
-  <button class="fab" id="add-btn"><span class="material-symbols-rounded">add</span></button>
+    <div class="menu-card card-consume" id="home-consume-btn">
+        <div class="menu-icon"><span class="material-symbols-rounded">soup_kitchen</span></div>
+        <div class="menu-text">
+            <h3>Consume</h3>
+            <p>Scan to use 1 item</p>
+        </div>
+    </div>
+
+    <div class="menu-card card-list" id="home-list-btn">
+        <div class="menu-icon"><span class="material-symbols-rounded">inventory_2</span></div>
+        <div class="menu-text">
+            <h3>Inventory</h3>
+            <p>See what's inside</p>
+        </div>
+    </div>
+  </section>
+
+  <!-- LIST VIEW -->
+  <section id="list-view" class="view-section">
+    <header>
+        <button id="back-to-home" class="back-btn"><span class="material-symbols-rounded">arrow_back_ios</span> Back</button>
+        <div class="logo" style="font-size: 1.2rem;">Stock</div>
+        <button id="new-cat-btn" style="background:none; border:none; color:var(--text-main); font-weight:700;">+ Cat</button>
+    </header>
+    
+    <div id="product-list-container">
+        <!-- Injected JS -->
+    </div>
+
+    <button class="fab" id="fab-add-btn"><span class="material-symbols-rounded">add</span></button>
+  </section>
+
+  <!-- MODALS & OVERLAYS -->
 
   <!-- Add Product Modal -->
   <div class="modal-overlay" id="add-modal">
     <div class="modal-content">
-      <h2 style="margin-bottom:1.5rem">Add Product</h2>
-      
+      <h2 style="margin-bottom:1.5rem">New Item</h2>
       <form id="product-form">
-        <!-- Scan Row -->
-        <div style="display:flex; gap:10px; margin-bottom: 1rem;">
+        <!-- Scan -->
+        <div style="display:flex; gap:10px; margin-bottom:1rem;">
           <input type="text" id="barcode-input" placeholder="Barcode..." required style="margin:0;">
-          <button type="button" class="btn-primary" id="scan-trigger" style="width:60px;"><span class="material-symbols-rounded">barcode_reader</span></button>
+          <button type="button" class="btn-secondary" id="scan-trigger" style="width:60px;"><span class="material-symbols-rounded">barcode_reader</span></button>
         </div>
 
         <input type="text" id="name-input" placeholder="Product Name" required>
-        
-        <!-- Category Select -->
         <select id="category-input"></select>
         
-        <!-- Photo Row -->
+        <!-- Photo -->
         <div style="margin-bottom: 1rem;">
-             <button type="button" class="btn" style="background: #334155; color: white; display: flex; align-items:center; justify-content:center; gap:10px;" id="take-photo-btn">
-                <span class="material-symbols-rounded">photo_camera</span> Take Photo
+             <button type="button" class="btn-secondary" id="take-photo-btn" style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <span class="material-symbols-rounded">photo_camera</span> Add Photo
              </button>
              <div id="photo-preview" style="margin-top:10px; display:none;">
-                 <img id="photo-img" src="" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">
+                 <img id="photo-img" src="" style="width:100%; height:180px; object-fit:cover; border-radius:16px;">
                  <input type="hidden" id="photo-base64">
              </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; background:rgba(255,255,255,0.05); padding:1rem; border-radius:12px;">
-            <label style="margin:0">Quantity</label>
-            <div class="product-qty-ctrl">
+        <!-- Quantity -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; background:#f8fafc; padding:1rem; border-radius:16px;">
+            <label style="margin:0; font-weight:600;">Quantity</label>
+            <div style="display: flex; gap:10px; align-items:center;">
                 <button type="button" class="btn-qty" onclick="adjInput(-1)">-</button>
                 <input type="number" id="qty-input" value="1" min="1" style="width:50px; margin:0; text-align:center; background:none; border:none; padding:0;">
                 <button type="button" class="btn-qty" onclick="adjInput(1)">+</button>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save Product</button>
-        <button type="button" class="btn" id="close-modal" style="margin-top:10px; color:#94a3b8">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save to Fridge</button>
+        <button type="button" class="btn" id="close-modal" style="margin-top:10px; background:none; color:var(--text-muted);">Cancel</button>
       </form>
     </div>
   </div>
-  
+
   <!-- Add Category Modal -->
   <div class="modal-overlay" id="cat-modal">
     <div class="modal-content" style="height:auto;">
-        <h3>New Category</h3>
-        <input type="text" id="new-cat-input" placeholder="Category Name" style="margin-top:1rem;">
-        <button class="btn btn-primary" id="save-cat-btn">Create</button>
-        <button class="btn" onclick="document.getElementById('cat-modal').classList.remove('active')" style="margin-top:10px;">Cancel</button>
+        <h3 style="margin-bottom:1rem;">New Category</h3>
+        <input type="text" id="new-cat-input" placeholder="Category Name e.g. Snacks">
+        <button class="btn btn-primary" id="save-cat-btn">Create Category</button>
+        <button class="btn" onclick="document.getElementById('cat-modal').classList.remove('active')" style="margin-top:10px; background:none;">Cancel</button>
     </div>
   </div>
 
   <!-- Scanner Overlay -->
   <div id="scanner-overlay" class="hidden">
     <div id="reader"></div>
-    <div class="scanner-ui">
-        <button class="btn-danger" id="close-scanner" style="width: auto; padding: 10px 30px; border-radius: 30px;">Close Camera</button>
+    <div class="overlay-controls">
+        <button class="btn-secondary" id="close-scanner" style="width: auto; padding: 12px 24px; border-radius: 30px; background:white;">Cancel</button>
     </div>
   </div>
 
-  <!-- Camera Capture Overlay -->
-  <div id="camera-overlay" class="hidden" style="position:fixed; inset:0; background:black; z-index:250; flex-direction:column;">
-    <video id="camera-feed" autoplay playsinline style="width:100%; flex:1; object-fit:cover;"></video>
-    <div style="padding: 2rem; display: flex; justify-content: center; gap: 2rem; background: black;">
-        <button class="btn" id="close-camera" style="width:auto; color:white;">Cancel</button>
-        <button class="btn-primary" id="capture-btn" style="width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; border: 4px solid white;">
-            <div style="width:60px; height:60px; background:white; border-radius:50%;"></div>
-        </button>
+  <!-- Camera Overlay -->
+  <div id="camera-overlay" class="hidden">
+    <video id="camera-feed" autoplay playsinline></video>
+    <div class="overlay-controls">
+        <button class="btn" id="close-camera" style="width:auto; background:white; color:black; border-radius:30px; padding:12px 24px;">Back</button>
+        <button id="capture-btn" class="capture-btn-outer"><div class="capture-btn-inner"></div></button>
+        <div style="width:80px;"></div> <!-- Spacer for center alignment -->
     </div>
     <canvas id="camera-canvas" class="hidden"></canvas>
   </div>
@@ -107,12 +141,12 @@
   <script src="js/scanner.js"></script>
   <script src="js/app.js"></script>
   <script>
-      function adjInput(d) {
+    function adjInput(d) {
         const el = document.getElementById('qty-input');
         const v = parseInt(el.value) + d;
         if(v >= 1) el.value = v;
-      }
-      if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js')); }
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
   </script>
 </body>
 </html>
